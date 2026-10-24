@@ -154,6 +154,18 @@ td.selcol .dot { outline: 2px solid var(--accent); outline-offset: -2px; }
 
 .msg { padding: 12px 14px; margin-top: 12px; font-size: 14px; }
 .msg.err { background: var(--no-bg); border-color: transparent; }
+.refrow { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 2px 4px 8px; font-size: 12px; color: var(--muted); }
+.refbtn {
+  flex: none; border: 1px solid var(--accent); background: transparent; color: var(--accent);
+  border-radius: 8px; padding: 6px 12px; font-size: 13px; font-weight: 600; cursor: pointer;
+}
+.refbtn:disabled { border-color: var(--line); color: var(--muted); cursor: default; }
+#toast {
+  position: fixed; left: 50%; bottom: calc(16px + env(safe-area-inset-bottom)); transform: translate(-50%, 20px);
+  background: var(--text); color: var(--bg); padding: 10px 14px; border-radius: 10px; font-size: 14px;
+  max-width: calc(100% - 32px); opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; z-index: 10;
+}
+#toast.show { opacity: 1; transform: translate(-50%, 0); }
 footer { font-size: 12px; color: var(--muted); margin-top: 24px; line-height: 1.5; padding: 0 4px; }
 footer a { color: inherit; }
 </style>
@@ -192,9 +204,11 @@ footer a { color: inherit; }
     Ocena na podstawie prognozy, a nie obserwacji. Ostateczna decyzja należy do pilota na miejscu, po obejrzeniu warunków.<br>
     Pierwsze 3 dni są najpewniejsze; dni 4–7 traktuj orientacyjnie (dalej prognoza co 6 h, porywy szacowane).<br>
     Wiatr w m/s. Okno lotne: 8:00–19:00, tylko w świetle dnia.<br>
+    Prognoza odświeża się sama co 30 min przy otwarciu; ręcznie można ją odświeżyć raz na 30 min.<br>
     Dane pogodowe: <a href="https://www.met.no/en" rel="noopener">MET Norway</a> (licencja CC BY 4.0), przez api.met.no.
   </footer>
 </div>
+<div id="toast" role="status" aria-live="polite"></div>
 
 <script>
 "use strict";
@@ -440,35 +454,94 @@ function cacheSet(id, json) {
 }
 async function fetchSpot(spot, force) {
   const c = cacheGet(spot.id);
-  if (!force && c && Date.now() - c.at < CACHE_MIN * 60000) return c.json;
+  if (!force && c && Date.now() - c.at < CACHE_MIN * 60000) return c;
   const url = API + "?lat=" + spot.lat.toFixed(4) + "&lon=" + spot.lon.toFixed(4);
   try {
     const res = await fetch(url, { headers: { Accept: "application/json" } });
     if (!res.ok) throw new Error("HTTP " + res.status);
     const json = await res.json();
     cacheSet(spot.id, json);
-    return json;
+    return { at: Date.now(), json };
   } catch (e) {
-    if (c) { state.errors[spot.id] = "stale"; return c.json; }
+    if (c) { state.errors[spot.id] = "stale"; return c; }
     throw e;
   }
 }
-async function loadAll(force) {
-  const btn = document.getElementById("refresh");
-  btn.classList.add("spin");
-  state.errors = {};
-  const jobs = SPOTS.map((spot, i) => new Promise((r) => setTimeout(r, i * 120)).then(() => fetchSpot(spot, force))
-    .then((json) => { state.data[spot.id] = { json, hours: expandHours(json) }; })
-    .catch(() => { state.errors[spot.id] = "fail"; }));
-  await Promise.all(jobs);
-  btn.classList.remove("spin");
+
+/* Ręczne odświeżanie: najwyżej raz na 30 minut (wspólny limit dla całej aplikacji) */
+const FORCE_MIN = 30;
+let lastForceMem = 0;
+function lastForce() {
+  try { return Math.max(lastForceMem, +localStorage.getItem("warun:lastForce") || 0); } catch (e) { return lastForceMem; }
+}
+function forceWaitMin() {
+  const left = FORCE_MIN * 60000 - (Date.now() - lastForce());
+  return left > 0 ? Math.ceil(left / 60000) : 0;
+}
+function markForce() {
+  lastForceMem = Date.now();
+  try { localStorage.setItem("warun:lastForce", String(lastForceMem)); } catch (e) {}
+}
+const hhmm = (ms) => new Date(ms).toLocaleTimeString("pl-PL", { timeZone: TZ, hour: "2-digit", minute: "2-digit" });
+let toastTimer = null;
+function toast(text) {
+  const el = document.getElementById("toast");
+  el.textContent = text;
+  el.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove("show"), 3500);
+}
+function limitHit() {
+  const m = forceWaitMin();
+  if (!m) return false;
+  toast("Dane odświeżone o " + hhmm(lastForce()) + ". Kolejne odświeżenie za " + m + " min.");
+  return true;
+}
+function storeSpot(spot, res) {
+  state.data[spot.id] = { json: res.json, at: res.at, hours: expandHours(res.json) };
+}
+function computeUpdated() {
   let newest = 0;
   for (const id in state.data) {
     const u = Date.parse(state.data[id].json.properties.meta.updated_at);
     if (u > newest) newest = u;
   }
   state.updated = newest || null;
+}
+async function refreshSpot(id) {
+  if (state.busy || limitHit()) return;
+  const spot = SPOTS.find((s) => s.id === id);
+  if (!spot) return;
+  state.busy = id;
+  markForce();
   render();
+  delete state.errors[id];
+  try { storeSpot(spot, await fetchSpot(spot, true)); }
+  catch (e) { state.errors[id] = "fail"; }
+  state.busy = null;
+  computeUpdated();
+  render();
+  toast(state.errors[id] ? "Nie udało się pobrać danych." : "Pobrano świeże dane: " + (spot.short || spot.name) + ".");
+}
+async function loadAll(force) {
+  if (state.busy) return;
+  if (force) {
+    if (limitHit()) return;
+    markForce();
+  }
+  const btn = document.getElementById("refresh");
+  btn.classList.add("spin");
+  state.busy = "all";
+  state.errors = {};
+  const jobs = SPOTS.map((spot, i) => new Promise((r) => setTimeout(r, i * 120)).then(() => fetchSpot(spot, force))
+    .then((res) => storeSpot(spot, res))
+    .catch(() => { state.errors[spot.id] = "fail"; }));
+  await Promise.all(jobs);
+  state.busy = null;
+  btn.classList.remove("spin");
+  computeUpdated();
+  render();
+  if (force) toast("Pobrano świeże dane dla wszystkich miejscówek.");
 }
 
 /* ---------- Widok ---------- */
@@ -589,7 +662,13 @@ function render() {
     const req = spot.dir
       ? "Wymaga: " + spot.dir[0] + "°–" + spot.dir[1] + "° (" + compass(spot.dir[0]) + "–" + compass(spot.dir[1]) + "), " + r_s(lim.min) + "–" + r_s(lim.max) + " m/s, porywy do " + r_s(lim.gust) + " m/s"
       : "Wymaga: dowolny kierunek, " + r_s(lim.min) + "–" + r_s(lim.max) + " m/s, porywy do " + r_s(lim.gust) + " m/s";
-    let body = '<div class="req">' + req + "</div>";
+    const dat = state.data[spot.id];
+    const wait = forceWaitMin();
+    const busyHere = state.busy === spot.id || state.busy === "all";
+    const btnLabel = busyHere ? "Pobieram…" : wait ? "Odśwież za " + wait + " min" : "Odśwież dane";
+    let body = '<div class="refrow"><span>' + (dat ? "Pobrano " + hhmm(dat.at) + " · model z " + hhmm(Date.parse(dat.json.properties.meta.updated_at)) : "Brak danych") + "</span>" +
+      '<button class="refbtn" data-refresh-spot="' + spot.id + '"' + (busyHere || wait ? " disabled" : "") + ">" + btnLabel + "</button></div>";
+    body += '<div class="req">' + req + "</div>";
     for (const n of spot.notes || []) body += '<div class="note">' + escapeHtml(n) + "</div>";
     if (r.rows && r.rows.length) {
       body += '<table class="hours"><thead><tr><th>Godz.</th><th>Kierunek</th><th>Wiatr</th><th>Poryw</th><th>Opad</th><th></th></tr></thead><tbody>';
@@ -631,11 +710,16 @@ document.addEventListener("click", (e) => {
   }
   const chip = e.target.closest(".chip");
   if (chip) { state.day = chip.dataset.day; render(); return; }
+  const ref = e.target.closest("[data-refresh-spot]");
+  if (ref) { if (!ref.disabled) refreshSpot(ref.dataset.refreshSpot); return; }
   const tog = e.target.closest("[data-toggle]");
   if (tog) { const id = tog.dataset.toggle; state.open[id] = !state.open[id]; render(); return; }
   if (e.target.closest("#refresh")) loadAll(true);
 });
 document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") loadAll(false); });
+
+// odliczanie na przycisku „Odśwież za X min”
+setInterval(() => { if (!state.busy && Object.keys(state.data).length) render(); }, 60000);
 
 if (typeof window !== "undefined" && !window.__WARUN_TEST__) loadAll(false);
 </script>
