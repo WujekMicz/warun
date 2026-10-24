@@ -1,0 +1,643 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Warun Pomorze</title>
+<meta name="description" content="Prywatna strona do sprawdzania warunków paralotniowych na Pomorzu – 7 dni, prognoza MET Norway.">
+<meta name="theme-color" content="#0e3a5c">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Warun">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" href="icon-512.png">
+<link rel="manifest" href="manifest.webmanifest">
+<style>
+:root {
+  --bg: #f3f6f9;
+  --card: #ffffff;
+  --text: #13202b;
+  --muted: #5b6b78;
+  --line: #dbe3ea;
+  --accent: #0e3a5c;
+  --accent-text: #ffffff;
+  --go: #1f9d55;
+  --go-bg: #dff4e7;
+  --warn: #b7791f;
+  --warn-bg: #fdf1d8;
+  --no: #c53030;
+  --no-bg: #fbe3e3;
+  --none: #9aa8b4;
+  --none-bg: #eef2f5;
+  --shadow: 0 1px 2px rgba(19,32,43,.06), 0 2px 8px rgba(19,32,43,.05);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0d1418;
+    --card: #162127;
+    --text: #e6eef3;
+    --muted: #93a4b0;
+    --line: #26343c;
+    --accent: #5fb0e8;
+    --accent-text: #0d1418;
+    --go: #4cc787;
+    --go-bg: #173527;
+    --warn: #e6b34f;
+    --warn-bg: #3a2f17;
+    --no: #f07171;
+    --no-bg: #3d1e1f;
+    --none: #6d7d88;
+    --none-bg: #1d2a31;
+    --shadow: none;
+  }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font: 16px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  -webkit-text-size-adjust: 100%;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+button { font: inherit; color: inherit; }
+.wrap { max-width: 640px; margin: 0 auto; padding: 12px 16px 40px; }
+
+header { display: flex; align-items: center; gap: 12px; padding: 8px 0 12px; }
+header h1 { font-size: 22px; margin: 0; letter-spacing: -.01em; }
+header .sub { font-size: 13px; color: var(--muted); }
+header .grow { flex: 1; min-width: 0; }
+.iconbtn {
+  border: 1px solid var(--line); background: var(--card); border-radius: 10px;
+  width: 40px; height: 40px; display: grid; place-items: center; cursor: pointer; flex: none;
+}
+.iconbtn svg { width: 20px; height: 20px; }
+.iconbtn.spin svg { animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.seg { display: inline-flex; background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 3px; }
+.seg button { border: 0; background: transparent; padding: 6px 14px; border-radius: 7px; font-size: 14px; font-weight: 600; color: var(--muted); cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-text); }
+.controls { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+.controls .hint { font-size: 12px; color: var(--muted); }
+
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); }
+.section-title { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin: 20px 4px 8px; }
+
+/* week grid */
+.grid { padding: 8px 6px 10px; overflow: hidden; }
+.grid table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.grid th { font-size: 11px; font-weight: 600; color: var(--muted); padding: 2px 0 6px; text-align: center; line-height: 1.15; }
+.grid th.namecol { width: 34%; text-align: left; padding-left: 6px; }
+.grid th.less { opacity: .7; }
+.grid th.sel { color: var(--accent); }
+.grid td { padding: 3px 2px; text-align: center; }
+.grid td.name { text-align: left; font-size: 13px; padding-left: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.grid tr.grp td { font-size: 10px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; padding-top: 8px; text-align: left; padding-left: 6px; }
+.dot {
+  display: inline-grid; place-items: center; width: 100%; max-width: 34px; height: 26px; border-radius: 7px;
+  font-size: 12px; font-weight: 700; border: 0; cursor: pointer; padding: 0;
+}
+.s2 { background: var(--go-bg); color: var(--go); }
+.s1 { background: var(--warn-bg); color: var(--warn); }
+.s0 { background: var(--no-bg); color: var(--no); }
+.sx { background: var(--none-bg); color: var(--none); }
+td.selcol .dot { outline: 2px solid var(--accent); outline-offset: -2px; }
+.legend { display: flex; gap: 12px; flex-wrap: wrap; font-size: 12px; color: var(--muted); padding: 2px 8px 0; }
+.legend span { display: inline-flex; align-items: center; gap: 5px; }
+.legend i { width: 12px; height: 12px; border-radius: 4px; display: inline-block; }
+
+/* day chips */
+.days { display: flex; gap: 8px; overflow-x: auto; padding: 2px 2px 6px; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+.days::-webkit-scrollbar { display: none; }
+.chip {
+  flex: none; border: 1px solid var(--line); background: var(--card); border-radius: 12px; padding: 7px 12px;
+  text-align: center; cursor: pointer; min-width: 74px;
+}
+.chip b { display: block; font-size: 14px; }
+.chip small { display: block; font-size: 11px; color: var(--muted); }
+.chip.less { border-style: dashed; }
+.chip[aria-pressed="true"] { background: var(--accent); color: var(--accent-text); border-color: var(--accent); border-style: solid; }
+.chip[aria-pressed="true"] small { color: inherit; opacity: .85; }
+
+.verdict { padding: 12px 14px; margin-top: 10px; font-size: 15px; }
+.verdict .lbl { font-size: 12px; color: var(--muted); display: block; margin-bottom: 2px; }
+.uncertain { font-size: 12px; color: var(--warn); margin-top: 4px; }
+
+/* spot list */
+.spot { margin-top: 10px; overflow: hidden; }
+.spot > button.head {
+  width: 100%; display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: 0; background: transparent; text-align: left; cursor: pointer;
+}
+.badge { width: 40px; height: 40px; border-radius: 10px; display: grid; place-items: center; font-size: 18px; font-weight: 800; flex: none; }
+.spot .info { flex: 1; min-width: 0; }
+.spot .nm { font-weight: 650; font-size: 16px; }
+.spot .meta { font-size: 13px; color: var(--muted); margin-top: 1px; }
+.spot .why { font-size: 13px; margin-top: 2px; }
+.spot .chev { color: var(--muted); transition: transform .2s; flex: none; }
+.spot.open .chev { transform: rotate(90deg); }
+.spot .body { display: none; border-top: 1px solid var(--line); padding: 8px 10px 12px; }
+.spot.open .body { display: block; }
+.req { font-size: 12px; color: var(--muted); padding: 2px 4px 8px; }
+.note { font-size: 12px; background: var(--warn-bg); color: var(--text); border-radius: 8px; padding: 6px 8px; margin: 0 4px 8px; }
+.hours { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+.hours th { font-size: 11px; color: var(--muted); font-weight: 600; text-align: right; padding: 4px 4px; }
+.hours th:first-child, .hours td:first-child { text-align: left; }
+.hours td { padding: 5px 4px; text-align: right; border-top: 1px solid var(--line); }
+.hours td.st { width: 18px; }
+.hours .pip { display: inline-block; width: 10px; height: 10px; border-radius: 50%; }
+.pip.s2 { background: var(--go); } .pip.s1 { background: var(--warn); } .pip.s0 { background: var(--no); }
+.arrow { display: inline-block; font-size: 13px; line-height: 1; margin-right: 3px; }
+.est { color: var(--muted); }
+.empty { color: var(--muted); font-size: 13px; padding: 8px 4px; }
+
+.msg { padding: 12px 14px; margin-top: 12px; font-size: 14px; }
+.msg.err { background: var(--no-bg); border-color: transparent; }
+footer { font-size: 12px; color: var(--muted); margin-top: 24px; line-height: 1.5; padding: 0 4px; }
+footer a { color: inherit; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="grow">
+      <h1>Warun Pomorze</h1>
+      <div class="sub" id="updated">Ładuję prognozę…</div>
+    </div>
+    <button class="iconbtn" id="refresh" aria-label="Odśwież prognozę" title="Odśwież">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
+    </button>
+  </header>
+
+  <div class="controls">
+    <div class="seg" role="group" aria-label="Klasa skrzydła">
+      <button data-wing="A" aria-pressed="true">EN-A</button>
+      <button data-wing="B" aria-pressed="false">EN-B</button>
+    </div>
+    <span class="hint" id="winghint">Limity dla EN-A (Eona 3)</span>
+  </div>
+
+  <div id="msg"></div>
+
+  <div class="section-title">Tydzień</div>
+  <div class="card grid" id="grid"></div>
+
+  <div class="section-title">Dzień</div>
+  <div class="days" id="days" role="group" aria-label="Wybór dnia"></div>
+  <div class="card verdict" id="verdict"></div>
+  <div id="spots"></div>
+
+  <footer>
+    Ocena na podstawie prognozy, a nie obserwacji. Ostateczna decyzja należy do pilota na miejscu, po obejrzeniu warunków.<br>
+    Pierwsze 3 dni są najpewniejsze; dni 4–7 traktuj orientacyjnie (dalej prognoza co 6 h, porywy szacowane).<br>
+    Wiatr w m/s. Okno lotne: 8:00–19:00, tylko w świetle dnia.<br>
+    Dane pogodowe: <a href="https://www.met.no/en" rel="noopener">MET Norway</a> (licencja CC BY 4.0), przez api.met.no.
+  </footer>
+</div>
+
+<script>
+"use strict";
+
+/* ---------- Miejscówki i kryteria (EN-A) ----------
+   dir: [od, do] w stopniach, skąd wieje (zgodnie z ruchem wskazówek zegara)
+   tol: ile stopni poza zakresem to jeszcze "na granicy"
+   min/max: średni wiatr m/s dla EN-A; pubMax: górna granica z opisu startowiska (limit dla EN-B)
+   gust: maks. poryw m/s; diff: maks. różnica poryw − średnia
+   cap: "warn" = nigdy nie dawaj zielonego */
+const SPOTS = [
+  { id: "chlapowo", group: "Klify nadmorskie", name: "Chłapowo", lat: 54.81, lon: 18.39,
+    dir: [330, 30], tol: 20, min: 4, max: 7, pubMax: 8.5, gust: 8.5, diff: 3,
+    notes: ["Wiatr od lądu (S, SW, SE) = nie latać – rotor za klifem."] },
+  { id: "jastrzebia", group: "Klify nadmorskie", name: "Jastrzębia Góra", lat: 54.83, lon: 18.31,
+    dir: [330, 30], tol: 20, min: 4, max: 7, pubMax: 8.5, gust: 8.5, diff: 3,
+    notes: ["Wiatr od lądu (S, SW, SE) = nie latać – rotor za klifem."] },
+  { id: "stegna", group: "Wydmy", name: "Stegna", lat: 54.33, lon: 19.11,
+    dir: [350, 10], tol: 20, min: 6, max: 7, pubMax: 10, gust: 8.5, diff: 2.5,
+    notes: ["Wydma ok. 8 m, start trudny, lądowanie na plaży.", "Park Krajobrazowy – nie deptać wydm poza przejściami."] },
+  { id: "krynica", group: "Wydmy", name: "Krynica Morska", lat: 54.38, lon: 19.44,
+    dir: [330, 350], tol: 20, min: 6, max: 7, pubMax: 10, gust: 8.5, diff: 2.5,
+    notes: ["Sprawdź aktualną przestrzeń powietrzną – blisko granicy z Rosją.", "Park Krajobrazowy – nie deptać wydm poza przejściami."] },
+  { id: "mrzezino", group: "Mrzezino", name: "Mrzezino", lat: 54.652, lon: 18.44,
+    dir: [135, 225], tol: 20, min: 3, max: 6, pubMax: 7, gust: 8, diff: 3,
+    notes: ["MCTR Oksywie: przed wyjazdem zapytaj w Glide Club Gdynia, czy rejon będzie aktywowany i czy obejmuje szkolne górki."] },
+  { id: "nowemarzy", group: "Klify nadwiślane", name: "Nowe Marzy", lat: 53.467, lon: 18.649,
+    dir: [150, 180], tol: 15, min: 5, max: 7, pubMax: 9, gust: 8.5, diff: 3,
+    notes: ["Start płaski, lekko wklęsły – uwaga na rotor. Lądowanie lepiej na górze.", "Opłata – flykarta. Dojazd polną drogą, po deszczu trudny."] },
+  { id: "nowe", group: "Klify nadwiślane", name: "Nowe", lat: 53.652, lon: 18.735,
+    dir: [80, 110], tol: 20, min: 4, max: 7, pubMax: 7, gust: 8.5, diff: 3,
+    notes: ["Start dosyć trudny – z półki poniżej krawędzi. Duże lądowisko u podnóża.", "Sprawdź, czy obowiązuje opłata (flykarta)."] },
+  { id: "losiowa", group: "Klify nadwiślane", name: "Łosiowa Góra", lat: 53.557, lon: 18.768,
+    dir: [240, 270], tol: 15, min: 4.5, max: 7, pubMax: 8, gust: 8.5, diff: 3,
+    notes: ["Mało oblatana – przed pierwszym wyjazdem zapytaj lokalnych pilotów (Kuj-Pom)."] },
+  { id: "parski", group: "Klify nadwiślane", name: "Parski", lat: 53.525, lon: 18.763,
+    dir: [240, 270], tol: 15, min: 4.5, max: 7, pubMax: 8, gust: 8.5, diff: 3, cap: "warn",
+    notes: ["Kierunek niepotwierdzony – przyjęty jak na Łosiowej Górze. Najwyżej żółte, dopóki nie potwierdzisz u lokalnych pilotów."] },
+  { id: "gh", group: "Ground handling", name: "GH – lotnisko Elbląg", short: "GH Elbląg", lat: 54.16, lon: 19.42,
+    type: "gh", min: 2, max: 7, pubMax: 9, gust: 9, diff: 3.5,
+    notes: ["Kierunek dowolny. Zgoda zarządzającego lotniskiem i uwaga na ruch samolotów."] },
+  { id: "borsk", group: "Termika", name: "Borsk – termika (wyciągarka)", short: "Borsk", lat: 53.97, lon: 17.84,
+    type: "thermal", min: 1, max: 5, pubMax: 6, gust: 7, diff: 4,
+    notes: ["Od października do marca termika jest zwykle słaba lub żadna.", "met.no nie podaje podstawy chmur – ocena tylko z wiatru, zachmurzenia i opadów."] }
+];
+
+const TZ = "Europe/Warsaw";
+const CACHE_MIN = 30;
+const API = "https://api.met.no/weatherapi/locationforecast/2.0/complete";
+const DAYS_PL = ["Nd", "Pn", "Wt", "Śr", "Cz", "Pt", "Sb"];
+const DAYS_PL_LONG = ["Niedziela", "Poniedziałek", "Wtorek", "Środa", "Czwartek", "Piątek", "Sobota"];
+const COMPASS = ["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSW","SW","WSW","W","WNW","NW","NNW"];
+
+/* ---------- Stan ---------- */
+const state = { wing: "A", day: null, data: {}, errors: {}, updated: null, open: {} };
+try { const w = localStorage.getItem("warun:wing"); if (w === "A" || w === "B") state.wing = w; } catch (e) {}
+
+/* ---------- Narzędzia ---------- */
+const partsFmt = new Intl.DateTimeFormat("en-GB", { timeZone: TZ, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", hourCycle: "h23", weekday: "short" });
+function localParts(ms) {
+  const p = {};
+  for (const x of partsFmt.formatToParts(new Date(ms))) p[x.type] = x.value;
+  return { key: p.year + "-" + p.month + "-" + p.day, y: +p.year, m: +p.month, d: +p.day, h: +p.hour % 24 };
+}
+function dayLabel(key) {
+  const [y, m, d] = key.split("-").map(Number);
+  const wd = new Date(Date.UTC(y, m - 1, d, 12)).getUTCDay();
+  return { short: DAYS_PL[wd], long: DAYS_PL_LONG[wd], date: d + "." + String(m).padStart(2, "0") };
+}
+const r1 = (x) => (Math.round(x * 10) / 10).toFixed(1).replace(".", ",");
+const compass = (deg) => COMPASS[Math.round(((deg % 360) + 360) % 360 / 22.5) % 16];
+function escapeHtml(s) { return String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
+
+/* Odległość kierunku od zakresu [a,b] (zgodnie z ruchem wskazówek), 0 = w zakresie */
+function dirOutside(deg, a, b) {
+  deg = ((deg % 360) + 360) % 360;
+  const span = ((b - a) + 360) % 360;
+  const off = ((deg - a) + 360) % 360;
+  if (off <= span) return 0;
+  const toA = ((a - deg) + 360) % 360;
+  const toB = ((deg - b) + 360) % 360;
+  return Math.min(toA, toB);
+}
+
+/* Wschód i zachód słońca (równanie wschodu słońca), wynik w ms UTC */
+function sunTimes(y, m, d, lat, lon) {
+  const rad = Math.PI / 180;
+  const jd = Date.UTC(y, m - 1, d, 12) / 86400000 + 2440587.5;
+  const n = Math.round(jd - 2451545.0 + 0.0008);
+  const jstar = n - lon / 360;
+  const M = (357.5291 + 0.98560028 * jstar) % 360;
+  const C = 1.9148 * Math.sin(M * rad) + 0.02 * Math.sin(2 * M * rad) + 0.0003 * Math.sin(3 * M * rad);
+  const lam = (M + C + 180 + 102.9372) % 360;
+  const jt = 2451545 + jstar + 0.0053 * Math.sin(M * rad) - 0.0069 * Math.sin(2 * lam * rad);
+  const dec = Math.asin(Math.sin(lam * rad) * Math.sin(23.44 * rad));
+  const cosw = (Math.sin(-0.833 * rad) - Math.sin(lat * rad) * Math.sin(dec)) / (Math.cos(lat * rad) * Math.cos(dec));
+  const w = Math.acos(Math.max(-1, Math.min(1, cosw))) / rad;
+  const toMs = (j) => (j - 2440587.5) * 86400000;
+  return { rise: toMs(jt - w / 360), set: toMs(jt + w / 360) };
+}
+
+/* ---------- Limity zależne od skrzydła ---------- */
+function limits(spot, wing) {
+  if (wing === "B") {
+    const capMax = spot.type === "thermal" ? 6 : 8.5;
+    return { min: spot.min, max: Math.min(spot.pubMax, Math.max(spot.max, capMax)), gust: spot.gust + 1.5, diff: spot.diff + 0.5 };
+  }
+  return { min: spot.min, max: spot.max, gust: spot.gust, diff: spot.diff };
+}
+
+/* ---------- Dane met.no → godziny lokalne ---------- */
+function expandHours(json) {
+  const out = [];
+  const ts = (json && json.properties && json.properties.timeseries) || [];
+  for (let i = 0; i < ts.length; i++) {
+    const t = Date.parse(ts[i].time);
+    const det = ts[i].data.instant.details || {};
+    const n1 = ts[i].data.next_1_hours;
+    const n6 = ts[i].data.next_6_hours;
+    const nextT = i + 1 < ts.length ? Date.parse(ts[i + 1].time) : t + 3600000;
+    const step = Math.max(1, Math.round((nextT - t) / 3600000));
+    const hourly = !!n1 && step === 1;
+    let precip = 0, thunder = 0;
+    if (hourly) {
+      precip = (n1.details && n1.details.precipitation_amount) || 0;
+      thunder = (n1.details && n1.details.probability_of_thunder) || 0;
+    } else if (n6 && n6.details) {
+      precip = (n6.details.precipitation_amount || 0) / 6;
+      thunder = n6.details.probability_of_thunder || 0;
+    } else if (n1 && n1.details) {
+      precip = n1.details.precipitation_amount || 0;
+    }
+    const hasGust = typeof det.wind_speed_of_gust === "number";
+    for (let k = 0; k < Math.min(step, 6); k++) {
+      out.push({
+        t: t + k * 3600000,
+        dir: det.wind_from_direction,
+        ws: det.wind_speed,
+        gust: hasGust ? det.wind_speed_of_gust : null,
+        cloud: det.cloud_area_fraction,
+        precip, thunder,
+        coarse: !hourly
+      });
+    }
+  }
+  return out;
+}
+
+/* ---------- Ocena jednej godziny: 2 = ok, 1 = na granicy, 0 = nie ---------- */
+function rateHour(spot, h, lim, month) {
+  const reasons = [];
+  let s = 2;
+  const worse = (v, why) => { if (v < s) s = v; if (why && reasons.indexOf(why) < 0) reasons.push(why); };
+  if (typeof h.ws !== "number" || typeof h.dir !== "number") return { s: 0, reasons: ["brak danych"], gust: null, est: false };
+
+  if (h.thunder >= 20) worse(0, "ryzyko burzy");
+  else if (h.thunder >= 5) worse(1, "możliwa burza");
+  if (h.precip >= 0.3) worse(0, "opady");
+  else if (h.precip >= 0.1) worse(1, "przelotne opady");
+
+  if (spot.dir) {
+    const out = dirOutside(h.dir, spot.dir[0], spot.dir[1]);
+    if (out > spot.tol) worse(0, "zły kierunek");
+    else if (out > 0) worse(1, "kierunek na granicy");
+  }
+
+  if (h.ws > lim.max) worse(0, "za mocno");
+  else if (h.ws < lim.min - 1) worse(0, "za słabo");
+  else if (h.ws < lim.min) worse(1, "słabo");
+
+  let gust = h.gust, est = false;
+  if (gust == null) { gust = h.ws * 1.4 + 0.5; est = true; }
+  if (gust > lim.gust) worse(est ? 1 : 0, est ? "porywy (szacunek)" : "porywy za mocne");
+  else if (gust - h.ws > lim.diff) worse(est ? 1 : 0, est ? "porywisto (szacunek)" : "za porywisto");
+
+  if (spot.type === "thermal") {
+    if (typeof h.cloud === "number" && h.cloud > 80) worse(1, "dużo chmur");
+    if (month >= 10 || month <= 3) worse(1, "termika zwykle słaba o tej porze roku");
+  }
+  return { s, reasons, gust, est };
+}
+
+/* ---------- Ocena dnia dla miejscówki ---------- */
+function rateDay(spot, hours, dayKey, wing) {
+  const lim = limits(spot, wing);
+  const [y, m, d] = dayKey.split("-").map(Number);
+  const sun = sunTimes(y, m, d, spot.lat, spot.lon);
+  const rows = [];
+  for (const h of hours) {
+    const lp = localParts(h.t);
+    if (lp.key !== dayKey || lp.h < 8 || lp.h >= 19) continue;
+    const mid = h.t + 1800000;
+    if (mid < sun.rise || mid > sun.set) continue;
+    rows.push(Object.assign({ hour: lp.h }, h, rateHour(spot, h, lim, m)));
+  }
+  if (!rows.length) return { s: -1, rows, text: "brak danych na ten dzień", coarse: false };
+
+  // najdłuższa seria godzin zielonych
+  let best = { len: 0, from: -1, to: -1 }, cur = 0, start = 0;
+  rows.forEach((r, i) => {
+    if (r.s === 2) { if (cur === 0) start = i; cur++; if (cur > best.len) best = { len: cur, from: start, to: i }; }
+    else cur = 0;
+  });
+  const okCount = rows.filter((r) => r.s === 2).length;
+  const warnCount = rows.filter((r) => r.s >= 1).length;
+  let s;
+  if (best.len >= 2) s = 2;
+  else if (okCount >= 1 || warnCount >= 2) s = 1;
+  else s = 0;
+  if (spot.cap === "warn" && s === 2) s = 1;
+  const coarse = rows.some((r) => r.coarse);
+
+  let pick;
+  if (best.len >= 1) pick = rows.slice(best.from, best.to + 1);
+  else {
+    // najdłuższa seria żółtych
+    let b = { len: 0, from: -1, to: -1 }, c = 0, st = 0;
+    rows.forEach((r, i) => { if (r.s >= 1) { if (c === 0) st = i; c++; if (c > b.len) b = { len: c, from: st, to: i }; } else c = 0; });
+    pick = b.len ? rows.slice(b.from, b.to + 1) : rows;
+  }
+  const avg = (arr, f) => arr.reduce((a, r) => a + f(r), 0) / arr.length;
+  const ws = avg(pick, (r) => r.ws);
+  const gs = avg(pick, (r) => r.gust);
+  const dirMean = circMean(pick.map((r) => r.dir));
+  const windowTxt = s >= 1 ? pick[0].hour + "–" + (pick[pick.length - 1].hour + 1) : "";
+  const reasonCount = {};
+  for (const r of (s === 0 ? rows : pick)) for (const why of r.reasons) reasonCount[why] = (reasonCount[why] || 0) + 1;
+  const why = Object.keys(reasonCount).sort((a, b) => reasonCount[b] - reasonCount[a]).slice(0, 2);
+  return { s, rows, windowTxt, ws, gs, dir: dirMean, why, coarse, est: pick.some((r) => r.est) };
+}
+function circMean(degs) {
+  let x = 0, y = 0;
+  for (const d of degs) { x += Math.cos(d * Math.PI / 180); y += Math.sin(d * Math.PI / 180); }
+  return ((Math.atan2(y, x) * 180 / Math.PI) + 360) % 360;
+}
+
+/* ---------- Pobieranie ---------- */
+function cacheGet(id) {
+  try { const v = JSON.parse(localStorage.getItem("warun:" + id) || "null"); return v; } catch (e) { return null; }
+}
+function cacheSet(id, json) {
+  try { localStorage.setItem("warun:" + id, JSON.stringify({ at: Date.now(), json })); } catch (e) {}
+}
+async function fetchSpot(spot, force) {
+  const c = cacheGet(spot.id);
+  if (!force && c && Date.now() - c.at < CACHE_MIN * 60000) return c.json;
+  const url = API + "?lat=" + spot.lat.toFixed(4) + "&lon=" + spot.lon.toFixed(4);
+  try {
+    const res = await fetch(url, { headers: { Accept: "application/json" } });
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const json = await res.json();
+    cacheSet(spot.id, json);
+    return json;
+  } catch (e) {
+    if (c) { state.errors[spot.id] = "stale"; return c.json; }
+    throw e;
+  }
+}
+async function loadAll(force) {
+  const btn = document.getElementById("refresh");
+  btn.classList.add("spin");
+  state.errors = {};
+  const jobs = SPOTS.map((spot, i) => new Promise((r) => setTimeout(r, i * 120)).then(() => fetchSpot(spot, force))
+    .then((json) => { state.data[spot.id] = { json, hours: expandHours(json) }; })
+    .catch(() => { state.errors[spot.id] = "fail"; }));
+  await Promise.all(jobs);
+  btn.classList.remove("spin");
+  let newest = 0;
+  for (const id in state.data) {
+    const u = Date.parse(state.data[id].json.properties.meta.updated_at);
+    if (u > newest) newest = u;
+  }
+  state.updated = newest || null;
+  render();
+}
+
+/* ---------- Widok ---------- */
+const SYMB = { 2: "✓", 1: "!", 0: "✕", "-1": "–" };
+const SNAME = { 2: "lata", 1: "na granicy", 0: "nie lata", "-1": "brak danych" };
+function cls(s) { return s === 2 ? "s2" : s === 1 ? "s1" : s === 0 ? "s0" : "sx"; }
+
+function dayKeys() {
+  const keys = [];
+  const now = Date.now();
+  for (let i = 0; i < 7; i++) {
+    const k = localParts(now + i * 86400000).key;
+    if (keys.indexOf(k) < 0) keys.push(k);
+  }
+  while (keys.length < 7) keys.push(localParts(now + keys.length * 86400000 + 3600000 * 12).key);
+  return keys.slice(0, 7);
+}
+
+function computeAll() {
+  const keys = dayKeys();
+  const table = {};
+  for (const spot of SPOTS) {
+    table[spot.id] = {};
+    const d = state.data[spot.id];
+    for (const k of keys) table[spot.id][k] = d ? rateDay(spot, d.hours, k, state.wing) : { s: -1, rows: [], text: "brak danych" };
+  }
+  return { keys, table };
+}
+
+function render() {
+  const { keys, table } = computeAll();
+  if (!state.day || keys.indexOf(state.day) < 0) {
+    // dziś, a jeśli dziś już po zmroku lub brak godzin – jutro
+    const todayHasRows = SPOTS.some((s) => table[s.id][keys[0]].rows && table[s.id][keys[0]].rows.length);
+    state.day = todayHasRows ? keys[0] : keys[1];
+  }
+
+  // nagłówek
+  const up = document.getElementById("updated");
+  if (state.updated) {
+    const t = new Date(state.updated);
+    up.textContent = "Prognoza met.no z " + t.toLocaleString("pl-PL", { timeZone: TZ, weekday: "short", hour: "2-digit", minute: "2-digit" });
+  } else up.textContent = "Brak danych";
+  document.querySelectorAll(".seg button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.wing === state.wing)));
+  document.getElementById("winghint").textContent = state.wing === "A" ? "Limity dla EN-A (Eona 3)" : "Limity dla EN-B (szacunkowe)";
+
+  // komunikaty
+  const fails = SPOTS.filter((s) => state.errors[s.id] === "fail").map((s) => s.short || s.name);
+  const stale = SPOTS.filter((s) => state.errors[s.id] === "stale").map((s) => s.short || s.name);
+  let msg = "";
+  if (fails.length === SPOTS.length) msg = '<div class="card msg err">Nie udało się pobrać prognozy. Sprawdź internet i stuknij odśwież.</div>';
+  else if (fails.length) msg = '<div class="card msg err">Brak prognozy dla: ' + escapeHtml(fails.join(", ")) + ".</div>";
+  if (stale.length) msg += '<div class="card msg">Bez internetu – pokazuję ostatnią zapisaną prognozę dla: ' + escapeHtml(stale.join(", ")) + ".</div>";
+  document.getElementById("msg").innerHTML = msg;
+
+  // siatka tygodnia
+  let g = '<table><thead><tr><th class="namecol"></th>';
+  keys.forEach((k, i) => {
+    const L = dayLabel(k);
+    g += '<th class="' + (i >= 3 ? "less " : "") + (k === state.day ? "sel" : "") + '">' + L.short + "<br>" + L.date.split(".")[0] + "</th>";
+  });
+  g += "</tr></thead><tbody>";
+  let lastGroup = "";
+  for (const spot of SPOTS) {
+    if (spot.group !== lastGroup && spot.group !== spot.name) {
+      g += '<tr class="grp"><td colspan="8">' + escapeHtml(spot.group) + "</td></tr>";
+    }
+    lastGroup = spot.group;
+    g += '<tr><td class="name">' + escapeHtml(spot.short || spot.name) + "</td>";
+    for (const k of keys) {
+      const r = table[spot.id][k];
+      const L = dayLabel(k);
+      g += '<td class="' + (k === state.day ? "selcol" : "") + '"><button class="dot ' + cls(r.s) + '" data-day="' + k + '" data-spot="' + spot.id +
+        '" aria-label="' + escapeHtml((spot.short || spot.name) + ", " + L.long + " " + L.date + ": " + SNAME[r.s]) + '">' + SYMB[r.s] + "</button></td>";
+    }
+    g += "</tr>";
+  }
+  g += "</tbody></table>";
+  g += '<div class="legend"><span><i class="s2"></i>lata</span><span><i class="s1"></i>na granicy</span><span><i class="s0"></i>nie lata</span><span>dni 4–7 mniej pewne</span></div>';
+  document.getElementById("grid").innerHTML = g;
+
+  // dni
+  let dh = "";
+  keys.forEach((k, i) => {
+    const L = dayLabel(k);
+    dh += '<button class="chip' + (i >= 3 ? " less" : "") + '" data-day="' + k + '" aria-pressed="' + (k === state.day) + '"><b>' + L.short + " " + L.date + "</b><small>" +
+      (i === 0 ? "dziś" : i < 3 ? "pewniejsza" : "mniej pewna") + "</small></button>";
+  });
+  document.getElementById("days").innerHTML = dh;
+
+  // werdykt dnia
+  const dayIdx = keys.indexOf(state.day);
+  const good = SPOTS.map((s) => ({ s, r: table[s.id][state.day] })).filter((x) => x.r.s >= 1)
+    .sort((a, b) => b.r.s - a.r.s || b.r.rows.filter((h) => h.s === 2).length - a.r.rows.filter((h) => h.s === 2).length);
+  const L = dayLabel(state.day);
+  let v = '<span class="lbl">' + L.long + " " + L.date + "</span>";
+  const green = good.filter((x) => x.r.s === 2);
+  if (green.length) v += "Najlepiej: " + green.slice(0, 3).map((x) => "<b>" + escapeHtml(x.s.short || x.s.name) + "</b> " + x.r.windowTxt).join(", ") + ".";
+  else if (good.length) v += "Tylko na granicy: " + good.slice(0, 3).map((x) => "<b>" + escapeHtml(x.s.short || x.s.name) + "</b> " + x.r.windowTxt).join(", ") + ".";
+  else v += "Brak waruna na żadnej miejscówce.";
+  if (dayIdx >= 3) v += '<div class="uncertain">Prognoza na ' + (dayIdx + 1) + ". dzień – mało pewna, sprawdź ponownie bliżej terminu.</div>";
+  document.getElementById("verdict").innerHTML = v;
+
+  // lista miejscówek
+  let sh = "";
+  const order = SPOTS.slice().sort((a, b) => table[b.id][state.day].s - table[a.id][state.day].s);
+  for (const spot of order) {
+    const r = table[spot.id][state.day];
+    const lim = limits(spot, state.wing);
+    let meta = "";
+    if (r.s >= 1) meta = r.windowTxt + " · " + '<span class="arrow" style="transform:rotate(' + Math.round(r.dir) + 'deg)">↓</span>' + compass(r.dir) + " " + r_s(r.ws) + "/" + r_s(r.gs) + " m/s" + (r.est ? " (porywy szac.)" : "");
+    else if (r.rows && r.rows.length) {
+      const all = r.rows;
+      meta = '<span class="arrow" style="transform:rotate(' + Math.round(circMean(all.map((x) => x.dir))) + 'deg)">↓</span>' + compass(circMean(all.map((x) => x.dir))) + " " +
+        r_s(Math.min(...all.map((x) => x.ws))) + "–" + r_s(Math.max(...all.map((x) => x.ws))) + " m/s";
+    } else meta = "brak danych";
+    const why = r.why && r.why.length ? r.why.join(", ") : "";
+    const req = spot.dir
+      ? "Wymaga: " + spot.dir[0] + "°–" + spot.dir[1] + "° (" + compass(spot.dir[0]) + "–" + compass(spot.dir[1]) + "), " + r_s(lim.min) + "–" + r_s(lim.max) + " m/s, porywy do " + r_s(lim.gust) + " m/s"
+      : "Wymaga: dowolny kierunek, " + r_s(lim.min) + "–" + r_s(lim.max) + " m/s, porywy do " + r_s(lim.gust) + " m/s";
+    let body = '<div class="req">' + req + "</div>";
+    for (const n of spot.notes || []) body += '<div class="note">' + escapeHtml(n) + "</div>";
+    if (r.rows && r.rows.length) {
+      body += '<table class="hours"><thead><tr><th>Godz.</th><th>Kierunek</th><th>Wiatr</th><th>Poryw</th><th>Opad</th><th></th></tr></thead><tbody>';
+      for (const h of r.rows) {
+        body += "<tr><td>" + String(h.hour).padStart(2, "0") + ":00" + (h.coarse ? '<span class="est">*</span>' : "") + "</td>" +
+          '<td><span class="arrow" style="transform:rotate(' + Math.round(h.dir) + 'deg)">↓</span>' + compass(h.dir) + " " + Math.round(h.dir) + "°</td>" +
+          "<td>" + r_s(h.ws) + "</td>" +
+          "<td" + (h.est ? ' class="est"' : "") + ">" + (h.est ? "~" : "") + r_s(h.gust) + "</td>" +
+          "<td>" + (h.precip > 0 ? r_s(h.precip) : "–") + "</td>" +
+          '<td class="st" title="' + escapeHtml(h.reasons.join(", ") || "OK") + '"><span class="pip ' + cls(h.s) + '"></span></td></tr>';
+      }
+      body += "</tbody></table>";
+      if (r.coarse) body += '<div class="req" style="padding-top:6px">* prognoza co 6 godzin – mniej dokładna; ~ porywy szacowane.</div>';
+    } else body += '<div class="empty">Brak godzin w oknie 8–19 za dnia.</div>';
+    sh += '<div class="card spot' + (state.open[spot.id] ? " open" : "") + '" id="spot-' + spot.id + '">' +
+      '<button class="head" data-toggle="' + spot.id + '" aria-expanded="' + !!state.open[spot.id] + '">' +
+      '<span class="badge ' + cls(r.s) + '">' + SYMB[r.s] + "</span>" +
+      '<span class="info"><div class="nm">' + escapeHtml(spot.name) + "</div>" +
+      '<div class="meta">' + meta + "</div>" +
+      (why ? '<div class="why">' + escapeHtml(SNAME[r.s] + (r.s === 2 ? "" : ": " + why)) + "</div>" : "") +
+      "</span>" +
+      '<svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg>' +
+      "</button><div class=\"body\">" + body + "</div></div>";
+  }
+  document.getElementById("spots").innerHTML = sh;
+}
+function r_s(x) { return typeof x === "number" && isFinite(x) ? r1(x) : "–"; }
+
+/* ---------- Zdarzenia ---------- */
+document.addEventListener("click", (e) => {
+  const wingBtn = e.target.closest(".seg button");
+  if (wingBtn) { state.wing = wingBtn.dataset.wing; try { localStorage.setItem("warun:wing", state.wing); } catch (er) {} render(); return; }
+  const dot = e.target.closest(".dot");
+  if (dot) {
+    state.day = dot.dataset.day; state.open[dot.dataset.spot] = true; render();
+    const el = document.getElementById("spot-" + dot.dataset.spot);
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+    return;
+  }
+  const chip = e.target.closest(".chip");
+  if (chip) { state.day = chip.dataset.day; render(); return; }
+  const tog = e.target.closest("[data-toggle]");
+  if (tog) { const id = tog.dataset.toggle; state.open[id] = !state.open[id]; render(); return; }
+  if (e.target.closest("#refresh")) loadAll(true);
+});
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") loadAll(false); });
+
+if (typeof window !== "undefined" && !window.__WARUN_TEST__) loadAll(false);
+</script>
+</body>
+</html>
