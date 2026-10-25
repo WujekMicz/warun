@@ -155,6 +155,25 @@ td.selcol .dot { outline: 2px solid var(--accent); outline-offset: -2px; }
 .msg { padding: 12px 14px; margin-top: 12px; font-size: 14px; }
 .msg.err { background: var(--no-bg); border-color: transparent; }
 .refrow { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 2px 4px 8px; font-size: 12px; color: var(--muted); }
+.chart { display: block; width: 100%; height: auto; margin: 2px 0 2px; }
+.chart .grid-l { stroke: var(--line); stroke-width: 1; }
+.chart .ax { fill: var(--muted); font-size: 10px; font-family: inherit; }
+.chart .band { fill: var(--go); opacity: .13; }
+.chart .gustlim { stroke: var(--no); stroke-width: 1.2; stroke-dasharray: 4 3; opacity: .8; }
+.chart .gustbar { fill: var(--muted); opacity: .35; }
+.chart .gustbar.est { opacity: .18; }
+.chart .windline { fill: none; stroke: var(--accent); stroke-width: 2.4; stroke-linejoin: round; stroke-linecap: round; }
+.chart .pt { stroke: var(--card); stroke-width: 1.5; }
+.chart .pt.s2, .chart .dirarrow.s2 { fill: var(--go); }
+.chart .pt.s1, .chart .dirarrow.s1 { fill: var(--warn); }
+.chart .pt.s0, .chart .dirarrow.s0 { fill: var(--no); }
+.clegend { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 11px; color: var(--muted); padding: 0 4px 10px; }
+.clegend span { display: inline-flex; align-items: center; gap: 5px; }
+.clegend i { display: inline-block; }
+.lg-line { width: 14px; height: 3px; border-radius: 2px; background: var(--accent); }
+.lg-gust { width: 6px; height: 10px; border-radius: 1.5px; background: var(--muted); opacity: .5; }
+.lg-band { width: 12px; height: 10px; background: var(--go); opacity: .3; }
+.lg-lim { width: 14px; height: 0; border-top: 1.5px dashed var(--no); }
 .maps { display: flex; gap: 8px; padding: 0 4px 6px; flex-wrap: wrap; }
 .maplink {
   flex: 1 1 140px; text-align: center; text-decoration: none; font-size: 14px; font-weight: 600;
@@ -761,6 +780,7 @@ function render() {
     if (state.wing === "P" && !lim.na) body += '<div class="note">Parakite: tylko gładki, laminarny wiatr. Przy porywach i termice skrzydło zachowuje się nieprzewidywalnie – limity są szacunkowe.</div>';
     for (const n of spot.notes || []) body += '<div class="note">' + escapeHtml(n) + "</div>";
     if (r.rows && r.rows.length) {
+      body += windChart(r.rows, lim);
       body += '<table class="hours"><thead><tr><th>Godz.</th><th>Kierunek</th><th>Wiatr</th><th>Poryw</th><th>Opad</th><th></th></tr></thead><tbody>';
       for (const h of r.rows) {
         body += "<tr><td>" + String(h.hour).padStart(2, "0") + ":00" + (h.coarse ? '<span class="est">*</span>' : "") + "</td>" +
@@ -784,6 +804,45 @@ function render() {
       "</button><div class=\"body\">" + body + "</div></div>";
   }
   document.getElementById("spots").innerHTML = sh;
+}
+/* ---------- Wykres wiatru (SVG) ---------- */
+function windChart(rows, lim) {
+  const W = 340, H = 190, L = 28, R = 8, T = 30, B = 22;
+  const pw = W - L - R, ph = H - T - B, n = rows.length;
+  const top = Math.max(...rows.map((h) => Math.max(h.ws, h.gust || 0)), lim.na ? 0 : lim.gust, 8);
+  const yMax = Math.ceil((top + 1) / 2) * 2;
+  const x = (i) => L + (i + 0.5) * pw / n;
+  const y = (v) => T + ph - (Math.min(v, yMax) / yMax) * ph;
+  let s = '<svg class="chart" viewBox="0 0 ' + W + " " + H + '" role="img" aria-label="Wykres wiatru i porywów w ciągu dnia">';
+  // siatka i oś Y
+  const step = yMax > 14 ? 4 : 2;
+  for (let v = 0; v <= yMax; v += step) {
+    s += '<line class="grid-l" x1="' + L + '" x2="' + (W - R) + '" y1="' + y(v) + '" y2="' + y(v) + '"/>';
+    s += '<text class="ax" x="' + (L - 5) + '" y="' + (y(v) + 3.5) + '" text-anchor="end">' + v + "</text>";
+  }
+  // dozwolony zakres i limit porywu
+  if (!lim.na) {
+    s += '<rect class="band" x="' + L + '" width="' + pw + '" y="' + y(lim.max) + '" height="' + (y(lim.min) - y(lim.max)) + '"/>';
+    s += '<line class="gustlim" x1="' + L + '" x2="' + (W - R) + '" y1="' + y(lim.gust) + '" y2="' + y(lim.gust) + '"/>';
+  }
+  // porywy (słupki) i wiatr (linia)
+  const bw = Math.max(3, pw / n * 0.5);
+  rows.forEach((h, i) => {
+    if (h.gust == null) return;
+    s += '<rect class="gustbar' + (h.est ? " est" : "") + '" x="' + (x(i) - bw / 2) + '" width="' + bw + '" y="' + y(h.gust) + '" height="' + (y(h.ws) - y(h.gust)) + '" rx="1.5"/>';
+  });
+  s += '<polyline class="windline" points="' + rows.map((h, i) => x(i) + "," + y(h.ws)).join(" ") + '"/>';
+  rows.forEach((h, i) => { s += '<circle class="pt ' + cls(h.s) + '" cx="' + x(i) + '" cy="' + y(h.ws) + '" r="3.2"/>'; });
+  // strzałki kierunku (wskazują, dokąd wieje) i godziny
+  const every = n > 9 ? 2 : 1;
+  rows.forEach((h, i) => {
+    s += '<g transform="translate(' + x(i) + ",14) rotate(" + Math.round(h.dir) + ')"><path class="dirarrow ' + cls(h.s) + '" d="M0,7 L-4.5,-5 L0,-2.5 L4.5,-5 Z"/></g>';
+    if (i % every === 0) s += '<text class="ax" x="' + x(i) + '" y="' + (H - 6) + '" text-anchor="middle">' + h.hour + "</text>";
+  });
+  s += "</svg>";
+  s += '<div class="clegend"><span><i class="lg-line"></i>wiatr</span><span><i class="lg-gust"></i>poryw</span>' +
+    (lim.na ? "" : '<span><i class="lg-band"></i>zakres ' + r_s(lim.min) + "–" + r_s(lim.max) + '</span><span><i class="lg-lim"></i>max poryw</span>') + "<span>m/s</span></div>";
+  return s;
 }
 function r_s(x) { return typeof x === "number" && isFinite(x) ? r1(x) : "–"; }
 
