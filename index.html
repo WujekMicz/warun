@@ -155,6 +155,13 @@ td.selcol .dot { outline: 2px solid var(--accent); outline-offset: -2px; }
 .msg { padding: 12px 14px; margin-top: 12px; font-size: 14px; }
 .msg.err { background: var(--no-bg); border-color: transparent; }
 .refrow { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 2px 4px 8px; font-size: 12px; color: var(--muted); }
+.maps { display: flex; gap: 8px; padding: 0 4px 6px; flex-wrap: wrap; }
+.maplink {
+  flex: 1 1 140px; text-align: center; text-decoration: none; font-size: 14px; font-weight: 600;
+  color: var(--accent-text); background: var(--accent); border-radius: 9px; padding: 9px 10px;
+}
+.maplink small { font-weight: 400; opacity: .85; }
+.maplink.off { background: var(--none-bg); color: var(--muted); }
 .refbtn {
   flex: none; border: 1px solid var(--accent); background: transparent; color: var(--accent);
   border-radius: 8px; padding: 6px 12px; font-size: 13px; font-weight: 600; cursor: pointer;
@@ -186,6 +193,7 @@ footer a { color: inherit; }
     <div class="seg" role="group" aria-label="Klasa skrzydła">
       <button data-wing="A" aria-pressed="true">EN-A</button>
       <button data-wing="B" aria-pressed="false">EN-B</button>
+      <button data-wing="P" aria-pressed="false">Parakite</button>
     </div>
     <span class="hint" id="winghint">Limity dla EN-A (Eona 3)</span>
   </div>
@@ -241,12 +249,6 @@ const SPOTS = [
   { id: "nowe", group: "Klify nadwiślane", name: "Nowe", lat: 53.652, lon: 18.735,
     dir: [80, 110], tol: 20, min: 4, max: 7, pubMax: 7, gust: 8.5, diff: 3,
     notes: ["Start dosyć trudny – z półki poniżej krawędzi. Duże lądowisko u podnóża.", "Sprawdź, czy obowiązuje opłata (flykarta)."] },
-  { id: "losiowa", group: "Klify nadwiślane", name: "Łosiowa Góra", lat: 53.557, lon: 18.768,
-    dir: [240, 270], tol: 15, min: 4.5, max: 7, pubMax: 8, gust: 8.5, diff: 3,
-    notes: ["Mało oblatana – przed pierwszym wyjazdem zapytaj lokalnych pilotów (Kuj-Pom)."] },
-  { id: "parski", group: "Klify nadwiślane", name: "Parski", lat: 53.525, lon: 18.763,
-    dir: [240, 270], tol: 15, min: 4.5, max: 7, pubMax: 8, gust: 8.5, diff: 3, cap: "warn",
-    notes: ["Kierunek niepotwierdzony – przyjęty jak na Łosiowej Górze. Najwyżej żółte, dopóki nie potwierdzisz u lokalnych pilotów."] },
   { id: "gh", group: "Ground handling", name: "GH – lotnisko Elbląg", short: "GH Elbląg", lat: 54.16, lon: 19.42,
     type: "gh", min: 2, max: 7, pubMax: 9, gust: 9, diff: 3.5,
     notes: ["Kierunek dowolny. Zgoda zarządzającego lotniskiem i uwaga na ruch samolotów."] },
@@ -254,6 +256,70 @@ const SPOTS = [
     type: "thermal", min: 1, max: 5, pubMax: 6, gust: 7, diff: 4,
     notes: ["Od października do marca termika jest zwykle słaba lub żadna.", "met.no nie podaje podstawy chmur – ocena tylko z wiatru, zachmurzenia i opadów."] }
 ];
+
+/* ---------- Pinezki: startowisko i parking ----------
+   takeoff/parking: { lat, lon } albo { q: "adres do wyszukania" }, approx: true = położenie przybliżone.
+   parking: null = jeszcze nieustalone (do uzupełnienia). parkNote = jak dojść/gdzie stają piloci. */
+const PLACES = {
+  chlapowo: {
+    takeoff: { lat: 54.811, lon: 18.3727 },
+    parking: null,
+    parkNote: "Piloci stają przy drodze Władysławowo – Jastrzębia Góra, w okolicy szyldu „KLIF”. Przez ulicę, schodkami na górę i ścieżką wzdłuż płotu na polanę. W sezonie parking płatny."
+  },
+  jastrzebia: {
+    takeoff: { lat: 54.835, lon: 18.3012 },
+    parking: { q: "ulica Juliusza Słowackiego, Jastrzębia Góra" },
+    parkNote: "Miejsca wzdłuż ul. Słowackiego (wjazd przy Polo Markecie), w sezonie parkomaty. Alternatywa: płatny parking ośrodka „Promenada” na końcu ulicy, kilka kroków od startu."
+  },
+  stegna: {
+    takeoff: { lat: 54.3467, lon: 19.1134 },
+    parking: null,
+    parkNote: "Start z zejścia na plażę przy kutrach (przystań rybacka) albo na prawo od niego."
+  },
+  krynica: {
+    takeoff: null,
+    parking: null,
+    parkNote: "Przy stacji paliw w lewo, na parking przy porcie. Dalej plażą w lewo, aż do niezalesionej części wydmy."
+  },
+  mrzezino: {
+    takeoff: { lat: 54.651070, lon: 18.435921 },
+    parking: { lat: 54.648680, lon: 18.436691 },
+    parkNote: "Do szkolenia najlepsza górka najbardziej wysunięta na zachód."
+  },
+  nowemarzy: {
+    takeoff: { lat: 53.4665, lon: 18.648 },
+    parking: null,
+    parkNote: "Dojazd polnymi drogami – ostatni odcinek po deszczu trudny dla osobówki."
+  },
+  nowe: {
+    takeoff: { lat: 53.6519, lon: 18.7342 },
+    parking: { q: "osiedle Nadwiślańskie II 1a, 86-170 Nowe" },
+    parkNote: "Dojazd między blokami os. Nadwiślańskiego II; parking blisko startu, przy punkcie widokowym z wiatą."
+  },
+  gh: {
+    takeoff: { q: "Aeroklub Elbląski, Lotnicza 1H, 82-300 Elbląg", approx: true },
+    parking: null,
+    parkNote: ""
+  },
+  borsk: {
+    takeoff: { lat: 53.9518, lon: 17.9431, approx: true },
+    parking: null,
+    parkNote: "W Borsku przy zatoczce autobusowej w stronę Stacji Bąk, po ok. 2 km w lewo – dojeżdża się na wschodni kraniec pasa. Pinezka startowiska = środek pasa."
+  }
+};
+function mapsUrl(p) {
+  const q = p.q ? p.q : p.lat.toFixed(5) + "," + p.lon.toFixed(5);
+  return "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(q);
+}
+function placeLinks(spotId) {
+  const pl = PLACES[spotId] || {};
+  const btn = (p, label) => p
+    ? '<a class="maplink" href="' + mapsUrl(p) + '" target="_blank" rel="noopener">' + label + (p.approx ? ' <small>(przybliżone)</small>' : "") + "</a>"
+    : '<span class="maplink off">' + label + " <small>– do uzupełnienia</small></span>";
+  let h = '<div class="maps">' + btn(pl.takeoff, "📍 Startowisko") + btn(pl.parking, "🅿️ Parking") + "</div>";
+  if (pl.parkNote) h += '<div class="req">' + escapeHtml(pl.parkNote) + "</div>";
+  return h;
+}
 
 const TZ = "Europe/Warsaw";
 const CACHE_MIN = 30;
@@ -264,7 +330,7 @@ const COMPASS = ["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSW","SW","WSW",
 
 /* ---------- Stan ---------- */
 const state = { wing: "A", day: null, data: {}, errors: {}, updated: null, open: {} };
-try { const w = localStorage.getItem("warun:wing"); if (w === "A" || w === "B") state.wing = w; } catch (e) {}
+try { const w = localStorage.getItem("warun:wing"); if (w === "A" || w === "B" || w === "P") state.wing = w; } catch (e) {}
 
 /* ---------- Narzędzia ---------- */
 const partsFmt = new Intl.DateTimeFormat("en-GB", { timeZone: TZ, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", hourCycle: "h23", weekday: "short" });
@@ -311,7 +377,26 @@ function sunTimes(y, m, d, lat, lon) {
 }
 
 /* ---------- Limity zależne od skrzydła ---------- */
+/* Parakite: małe, szybkie skrzydło z refleksem do mocnego, GŁADKIEGO wiatru.
+   Potrzebuje więcej wiatru niż paralotnia (większe opadanie), znosi mocniej,
+   ale nie lubi porywów i termiki. Wartości szacunkowe – do dostrojenia.
+   [min, max, poryw maks., różnica poryw−średnia] w m/s */
+const PARAKITE = {
+  chlapowo:   [6, 12, 14.5, 3],
+  jastrzebia: [6, 12, 14.5, 3],
+  stegna:     [7, 12, 14.5, 3],
+  krynica:    [7, 12, 14.5, 3],
+  mrzezino:   [5, 8, 10.5, 3],
+  nowemarzy:  [6, 10, 12.5, 3],
+  nowe:       [6, 10, 12.5, 3],
+  gh:         [3, 11, 13.5, 4]
+};
 function limits(spot, wing) {
+  if (wing === "P") {
+    const p = PARAKITE[spot.id];
+    if (!p) return { na: true, min: 0, max: 0, gust: 0, diff: 0 };
+    return { min: p[0], max: p[1], gust: p[2], diff: p[3] };
+  }
   if (wing === "B") {
     const capMax = spot.type === "thermal" ? 6 : 8.5;
     return { min: spot.min, max: Math.min(spot.pubMax, Math.max(spot.max, capMax)), gust: spot.gust + 1.5, diff: spot.diff + 0.5 };
@@ -363,6 +448,7 @@ function rateHour(spot, h, lim, month) {
   let s = 2;
   const worse = (v, why) => { if (v < s) s = v; if (why && reasons.indexOf(why) < 0) reasons.push(why); };
   if (typeof h.ws !== "number" || typeof h.dir !== "number") return { s: 0, reasons: ["brak danych"], gust: null, est: false };
+  if (lim.na) return { s: 0, reasons: ["parakite nie do termiki"], gust: h.gust == null ? h.ws * 1.4 + 0.5 : h.gust, est: h.gust == null };
 
   if (h.thunder >= 20) worse(0, "ryzyko burzy");
   else if (h.thunder >= 5) worse(1, "możliwa burza");
@@ -586,7 +672,7 @@ function render() {
     up.textContent = "Prognoza met.no z " + t.toLocaleString("pl-PL", { timeZone: TZ, weekday: "short", hour: "2-digit", minute: "2-digit" });
   } else up.textContent = "Brak danych";
   document.querySelectorAll(".seg button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.wing === state.wing)));
-  document.getElementById("winghint").textContent = state.wing === "A" ? "Limity dla EN-A (Eona 3)" : "Limity dla EN-B (szacunkowe)";
+  document.getElementById("winghint").textContent = state.wing === "A" ? "Limity dla EN-A (Eona 3)" : state.wing === "B" ? "Limity dla EN-B (szacunkowe)" : "Parakite: mocny, gładki wiatr (szacunkowe)";
 
   // komunikaty
   const fails = SPOTS.filter((s) => state.errors[s.id] === "fail").map((s) => s.short || s.name);
@@ -659,7 +745,9 @@ function render() {
         r_s(Math.min(...all.map((x) => x.ws))) + "–" + r_s(Math.max(...all.map((x) => x.ws))) + " m/s";
     } else meta = "brak danych";
     const why = r.why && r.why.length ? r.why.join(", ") : "";
-    const req = spot.dir
+    const req = lim.na
+      ? "Parakite: nie do lotów termicznych – tu nie oceniamy."
+      : spot.dir
       ? "Wymaga: " + spot.dir[0] + "°–" + spot.dir[1] + "° (" + compass(spot.dir[0]) + "–" + compass(spot.dir[1]) + "), " + r_s(lim.min) + "–" + r_s(lim.max) + " m/s, porywy do " + r_s(lim.gust) + " m/s"
       : "Wymaga: dowolny kierunek, " + r_s(lim.min) + "–" + r_s(lim.max) + " m/s, porywy do " + r_s(lim.gust) + " m/s";
     const dat = state.data[spot.id];
@@ -668,7 +756,9 @@ function render() {
     const btnLabel = busyHere ? "Pobieram…" : wait ? "Odśwież za " + wait + " min" : "Odśwież dane";
     let body = '<div class="refrow"><span>' + (dat ? "Pobrano " + hhmm(dat.at) + " · model z " + hhmm(Date.parse(dat.json.properties.meta.updated_at)) : "Brak danych") + "</span>" +
       '<button class="refbtn" data-refresh-spot="' + spot.id + '"' + (busyHere || wait ? " disabled" : "") + ">" + btnLabel + "</button></div>";
+    body += placeLinks(spot.id);
     body += '<div class="req">' + req + "</div>";
+    if (state.wing === "P" && !lim.na) body += '<div class="note">Parakite: tylko gładki, laminarny wiatr. Przy porywach i termice skrzydło zachowuje się nieprzewidywalnie – limity są szacunkowe.</div>';
     for (const n of spot.notes || []) body += '<div class="note">' + escapeHtml(n) + "</div>";
     if (r.rows && r.rows.length) {
       body += '<table class="hours"><thead><tr><th>Godz.</th><th>Kierunek</th><th>Wiatr</th><th>Poryw</th><th>Opad</th><th></th></tr></thead><tbody>';
