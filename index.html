@@ -237,7 +237,8 @@ footer a { color: inherit; }
     Pierwsze 3 dni są najpewniejsze; dni 4–7 traktuj orientacyjnie (dalej prognoza co 6 h, porywy szacowane).<br>
     Wiatr w m/s. Okno lotne: 8:00–19:00, tylko w świetle dnia.<br>
     Prognoza odświeża się sama co 30 min przy otwarciu; ręcznie można ją odświeżyć raz na 30 min.<br>
-    Dane pogodowe: <a href="https://www.met.no/en" rel="noopener">MET Norway</a> (licencja CC BY 4.0), przez api.met.no.
+    Dane pogodowe: <a href="https://www.met.no/en" rel="noopener">MET Norway</a> (licencja CC BY 4.0), przez api.met.no.<br>
+    Wersja aplikacji: <span id="appver"></span>
   </footer>
 </div>
 <div id="toast" role="status" aria-live="polite"></div>
@@ -891,6 +892,22 @@ document.addEventListener("click", (e) => {
   if (e.target.closest("#refresh")) loadAll(true);
 });
 document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") loadAll(false); });
+
+/* ---------- Samoaktualizacja ----------
+   Ikona z ekranu początkowego trzyma starą wersję strony w pamięci.
+   Przy otwarciu i powrocie do aplikacji sprawdzamy na serwerze numer wersji;
+   jeśli jest nowszy, ładujemy stronę pod nowym adresem (z ?v=), co omija pamięć podręczną. */
+const APP_VERSION = "2026-10-25c";
+async function checkUpdate() {
+  try {
+    const t = await fetch(location.pathname + "?check=" + Date.now(), { cache: "no-store" }).then((r) => r.text());
+    const m = t.match(/APP_VERSION = "([^"]+)"/);
+    if (m && m[1] !== APP_VERSION) location.replace(location.pathname + "?v=" + encodeURIComponent(m[1]));
+  } catch (e) {}
+}
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") checkUpdate(); });
+document.getElementById("appver").textContent = APP_VERSION;
+if (typeof window !== "undefined" && !window.__WARUN_TEST__ && location.protocol !== "file:") checkUpdate();
 
 // odliczanie na przycisku „Odśwież za X min”
 setInterval(() => { if (!state.busy && Object.keys(state.data).length) render(); }, 60000);
