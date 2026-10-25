@@ -169,6 +169,9 @@ td.selcol .dot { outline: 2px solid var(--accent); outline-offset: -2px; }
 .chart .pt.s2, .chart .dirarrow.s2 { fill: var(--go); }
 .chart .pt.s1, .chart .dirarrow.s1 { fill: var(--warn); }
 .chart .pt.s0, .chart .dirarrow.s0 { fill: var(--no); }
+.idealarrow { fill: none; stroke: var(--accent); stroke-width: 1.6; stroke-linejoin: round; }
+.chart .idealghost { fill: none; stroke: var(--accent); stroke-width: 1.1; stroke-linejoin: round; opacity: .45; }
+.clegend svg { overflow: visible; }
 .clegend { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 11px; color: var(--muted); padding: 0 4px 10px; }
 .clegend span { display: inline-flex; align-items: center; gap: 5px; }
 .clegend i { display: inline-block; }
@@ -784,7 +787,7 @@ function render() {
     if (spot.alert) body += '<div class="note alert">⚠️ ' + escapeHtml(spot.alert) + "</div>";
     for (const n of spot.notes || []) body += '<div class="note">' + escapeHtml(n) + "</div>";
     if (r.rows && r.rows.length) {
-      body += windChart(r.rows, lim);
+      body += windChart(r.rows, lim, spot);
       body += '<table class="hours"><thead><tr><th>Godz.</th><th>Kierunek</th><th>Wiatr</th><th>Poryw</th><th>Opad</th><th></th></tr></thead><tbody>';
       for (const h of r.rows) {
         body += "<tr><td>" + String(h.hour).padStart(2, "0") + ":00" + (h.coarse ? '<span class="est">*</span>' : "") + "</td>" +
@@ -811,8 +814,15 @@ function render() {
   document.getElementById("spots").innerHTML = sh;
 }
 /* ---------- Wykres wiatru (SVG) ---------- */
-function windChart(rows, lim) {
+function idealDir(spot) {
+  if (!spot || !spot.dir) return null;
+  const span = ((spot.dir[1] - spot.dir[0]) + 360) % 360;
+  return (spot.dir[0] + span / 2) % 360;
+}
+function windChart(rows, lim, spot) {
   const W = 340, H = 190, L = 28, R = 8, T = 30, B = 22;
+  const ideal = idealDir(spot);
+  const ARROW = "M0,7 L-4.5,-5 L0,-2.5 L4.5,-5 Z";
   const pw = W - L - R, ph = H - T - B, n = rows.length;
   const top = Math.max(...rows.map((h) => Math.max(h.ws, h.gust || 0)), lim.na ? 0 : lim.gust, 8);
   const yMax = Math.ceil((top + 1) / 2) * 2;
@@ -840,12 +850,22 @@ function windChart(rows, lim) {
   rows.forEach((h, i) => { s += '<circle class="pt ' + cls(h.s) + '" cx="' + x(i) + '" cy="' + y(h.ws) + '" r="3.2"/>'; });
   // strzałki kierunku (wskazują, dokąd wieje) i godziny
   const every = n > 9 ? 2 : 1;
+  // idealny kierunek: duża strzałka na lewym marginesie + blady kontur za każdą godziną
+  if (ideal != null) {
+    s += '<g transform="translate(13,14) rotate(' + Math.round(ideal) + ') scale(1.25)"><path class="idealarrow" d="' + ARROW + '"/></g>';
+    rows.forEach((h, i) => {
+      s += '<g transform="translate(' + x(i) + ",14) rotate(" + Math.round(ideal) + ')"><path class="idealghost" d="' + ARROW + '"/></g>';
+    });
+  }
   rows.forEach((h, i) => {
-    s += '<g transform="translate(' + x(i) + ",14) rotate(" + Math.round(h.dir) + ')"><path class="dirarrow ' + cls(h.s) + '" d="M0,7 L-4.5,-5 L0,-2.5 L4.5,-5 Z"/></g>';
+    s += '<g transform="translate(' + x(i) + ",14) rotate(" + Math.round(h.dir) + ')"><path class="dirarrow ' + cls(h.s) + '" d="' + ARROW + '"/></g>';
     if (i % every === 0) s += '<text class="ax" x="' + x(i) + '" y="' + (H - 6) + '" text-anchor="middle">' + h.hour + "</text>";
   });
   s += "</svg>";
-  s += '<div class="clegend"><span><i class="lg-line"></i>wiatr</span><span><i class="lg-gust"></i>poryw</span>' +
+  s += '<div class="clegend">' +
+    (ideal != null ? '<span><svg width="12" height="14" viewBox="-6 -7 12 14"><g transform="rotate(' + Math.round(ideal) + ')"><path class="idealarrow" d="' + ARROW + '"/></g></svg>idealnie ' +
+      compass(ideal) + " " + Math.round(ideal) + "°</span>" : "") +
+    '<span><i class="lg-line"></i>wiatr</span><span><i class="lg-gust"></i>poryw</span>' +
     (lim.na ? "" : '<span><i class="lg-band"></i>zakres ' + r_s(lim.min) + "–" + r_s(lim.max) + '</span><span><i class="lg-lim"></i>max poryw</span>') + "<span>m/s</span></div>";
   return s;
 }
