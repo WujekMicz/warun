@@ -259,6 +259,11 @@ const SPOTS = [
   { id: "jastrzebia", group: "Klify nadmorskie", name: "Jastrzębia Góra", lat: 54.83, lon: 18.31,
     dir: [330, 30], tol: 20, min: 4, max: 7, pubMax: 8.5, gust: 8.5, diff: 3,
     notes: ["Wiatr od lądu (S, SW, SE) = nie latać – rotor za klifem."] },
+  { id: "debina", group: "Klify nadmorskie", name: "Dębina", lat: 54.6372, lon: 17.0014,
+    dir: [280, 350], tol: 20, min: 5, max: 7, pubMax: 8, gust: 8.5, diff: 3,
+    notes: ["Strefa TSA 14B: przed lotem sprawdź AUP i powiadom FIS Gdańsk (+48 22 574 74 85). Lokalni piloci na 146,025 MHz.",
+      "Start z małej polanki za krawędzią (miejsce dla 2 pilotów, dookoła drzewa). Przy mocnym wietrze lepiej startować z plaży spod klifu.",
+      "Toplanding ciasny, w silnym noszeniu. Na krawędzi wiatr przyspiesza – nawet ok. 10 m/s na starcie potrafi być lotne, ale pytaj miejscowych."] },
   { id: "stegna", group: "Wydmy", name: "Stegna", lat: 54.33, lon: 19.11,
     dir: [350, 10], tol: 20, min: 6, max: 7, pubMax: 10, gust: 8.5, diff: 2.5,
     notes: ["Wydma ok. 8 m, start trudny, lądowanie na plaży.", "Park Krajobrazowy – nie deptać wydm poza przejściami."] },
@@ -291,6 +296,11 @@ const PLACES = {
     takeoff: { lat: 54.811, lon: 18.3727 },
     parking: null,
     parkNote: "Piloci stają przy drodze Władysławowo – Jastrzębia Góra, w okolicy szyldu „KLIF”. Przez ulicę, schodkami na górę i ścieżką wzdłuż płotu na polanę. W sezonie parking płatny."
+  },
+  debina: {
+    takeoff: { lat: 54.6372, lon: 17.0014 },
+    parking: { lat: 54.63583, lon: 17.00668 },
+    parkNote: "W Dębinie w lewo na Poddąbie, ok. 500 m asfaltem, przy lesie prosto w dół leśną drogą. Auto na leśnej polanie PRZED szlabanem (za szlabanem mandaty), dalej ok. 300 m pieszo. Nie zostawiaj rzeczy na widoku, miej pompkę – zdarza się spuszczanie powietrza z kół. Zejście na plażę schodami w bukach, kilkaset metrów na wschód."
   },
   jastrzebia: {
     takeoff: { lat: 54.835, lon: 18.3012 },
@@ -410,6 +420,7 @@ function sunTimes(y, m, d, lat, lon) {
 const PARAKITE = {
   chlapowo:   [6, 12, 14.5, 3],
   jastrzebia: [6, 12, 14.5, 3],
+  debina:     [6, 12, 14.5, 3],
   stegna:     [7, 12, 14.5, 3],
   krynica:    [7, 12, 14.5, 3],
   mrzezino:   [5, 8, 10.5, 3],
@@ -897,7 +908,7 @@ document.addEventListener("visibilitychange", () => { if (document.visibilitySta
    Ikona z ekranu początkowego trzyma starą wersję strony w pamięci.
    Przy otwarciu i powrocie do aplikacji sprawdzamy na serwerze numer wersji;
    jeśli jest nowszy, ładujemy stronę pod nowym adresem (z ?v=), co omija pamięć podręczną. */
-const APP_VERSION = "2026-10-25c";
+const APP_VERSION = "2026-10-25d";
 async function checkUpdate() {
   try {
     const t = await fetch(location.pathname + "?check=" + Date.now(), { cache: "no-store" }).then((r) => r.text());
