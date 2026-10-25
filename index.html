@@ -141,6 +141,8 @@ td.selcol .dot { outline: 2px solid var(--accent); outline-offset: -2px; }
 .spot.open .body { display: block; }
 .req { font-size: 12px; color: var(--muted); padding: 2px 4px 8px; }
 .note { font-size: 12px; background: var(--warn-bg); color: var(--text); border-radius: 8px; padding: 6px 8px; margin: 0 4px 8px; }
+.note.alert { background: var(--no-bg); font-weight: 600; }
+.alertline { font-size: 12px; color: var(--no); font-weight: 600; margin-top: 3px; }
 .hours { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
 .hours th { font-size: 11px; color: var(--muted); font-weight: 600; text-align: right; padding: 4px 4px; }
 .hours th:first-child, .hours td:first-child { text-align: left; }
@@ -261,7 +263,8 @@ const SPOTS = [
     notes: ["Sprawdź aktualną przestrzeń powietrzną – blisko granicy z Rosją.", "Park Krajobrazowy – nie deptać wydm poza przejściami."] },
   { id: "mrzezino", group: "Mrzezino", name: "Mrzezino", lat: 54.652, lon: 18.44,
     dir: [135, 225], tol: 20, min: 3, max: 6, pubMax: 7, gust: 8, diff: 3,
-    notes: ["MCTR Oksywie: przed wyjazdem zapytaj w Glide Club Gdynia, czy rejon będzie aktywowany i czy obejmuje szkolne górki."] },
+    alert: "Tylko dla doświadczonych pilotów lub pod opieką instruktora. Bardzo turbulentnie, szczególnie gdy ruszy termika.",
+    notes: ["MCTR Oksywie: przed wyjazdem zapytaj w Glide Club Gdynia, czy rejon będzie aktywowany i czy obejmuje górki."] },
   { id: "nowemarzy", group: "Klify nadwiślane", name: "Nowe Marzy", lat: 53.467, lon: 18.649,
     dir: [150, 180], tol: 15, min: 5, max: 7, pubMax: 9, gust: 8.5, diff: 3,
     notes: ["Start płaski, lekko wklęsły – uwaga na rotor. Lądowanie lepiej na górze.", "Opłata – flykarta. Dojazd polną drogą, po deszczu trudny."] },
@@ -303,7 +306,7 @@ const PLACES = {
   mrzezino: {
     takeoff: { lat: 54.651070, lon: 18.435921 },
     parking: { lat: 54.648680, lon: 18.436691 },
-    parkNote: "Do szkolenia najlepsza górka najbardziej wysunięta na zachód."
+    parkNote: "Lata się głównie z górki najbardziej wysuniętej na zachód."
   },
   nowemarzy: {
     takeoff: { lat: 53.4665, lon: 18.648 },
@@ -778,6 +781,7 @@ function render() {
     body += placeLinks(spot.id);
     body += '<div class="req">' + req + "</div>";
     if (state.wing === "P" && !lim.na) body += '<div class="note">Parakite: tylko gładki, laminarny wiatr. Przy porywach i termice skrzydło zachowuje się nieprzewidywalnie – limity są szacunkowe.</div>';
+    if (spot.alert) body += '<div class="note alert">⚠️ ' + escapeHtml(spot.alert) + "</div>";
     for (const n of spot.notes || []) body += '<div class="note">' + escapeHtml(n) + "</div>";
     if (r.rows && r.rows.length) {
       body += windChart(r.rows, lim);
@@ -799,6 +803,7 @@ function render() {
       '<span class="info"><div class="nm">' + escapeHtml(spot.name) + "</div>" +
       '<div class="meta">' + meta + "</div>" +
       (why ? '<div class="why">' + escapeHtml(SNAME[r.s] + (r.s === 2 ? "" : ": " + why)) + "</div>" : "") +
+      (spot.alert ? '<div class="alertline">⚠️ Dla doświadczonych lub z instruktorem</div>' : "") +
       "</span>" +
       '<svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg>' +
       "</button><div class=\"body\">" + body + "</div></div>";
